@@ -1,80 +1,46 @@
-//`timescale 1ns / 1ps
-module TBEC_RSC_decoder (
-  input  logic [0:15] data_in,
-  output logic [ 0:7] data_out
+`include "macros.svh"
+
+module tbec_rsc_decoder (
+  input  logic [15:0] data_in,
+  output logic [ 7:0] data_out
 );
-  logic [0:1] signal[0:3];
-  logic [0:7] red;
-  logic [0:1] linsin[0:1];
-  logic [0:1] SP;
-  logic [0:1] SDi;
-  logic [0:2] flag;
+  logic [7:0] signal;
+  logic [7:0] red;
+
+  logic [1:0] linsin [1:0];
+  logic [1:0] SP;
+  logic [1:0] SDi;
+
+  logic [2:0] sumSL;
+  logic [1:0] sumSP, sumSDi;
 
   always_comb begin
+    {red, signal} = data_in;
 
-    integer b;
-    integer sumSL = 0;
-    integer sumSP = 0;
-    integer sumSDi = 0;
-    integer quad1 = 0;
-    integer quad2 = 0;
+    linsin = {
+      {signal[5] ^ signal[7] ^ red[7], signal[4] ^ signal[6] ^ red[6]}, {signal[1] ^ signal[3] ^ red[5], signal[0] ^ signal[2] ^ red[4]}
+    };
 
-    signal[0][0:1] = {data_in[0], data_in[4]};
-    signal[1][0:1] = {data_in[1], data_in[5]};
-    signal[2][0:1] = {data_in[2], data_in[6]};
-    signal[3][0:1] = {data_in[3], data_in[7]};
+    SP = {signal[2] ^ signal[3] ^ signal[6] ^ signal[7] ^ red[3], signal[0] ^ signal[1] ^ signal[4] ^ signal[5] ^ red[2]};
 
-    red[0:7]       = data_in[8:15];
-    linsin[0][0]   = signal[0][0] ^ signal[2][0] ^ red[4];
-    linsin[1][0]   = signal[0][1] ^ signal[2][1] ^ red[6];
-    linsin[0][1]   = signal[1][0] ^ signal[3][0] ^ red[5];
-    linsin[1][1]   = signal[1][1] ^ signal[3][1] ^ red[7];
+    SDi = {signal[1] ^ signal[3] ^ signal[4] ^ signal[6] ^ red[1], signal[0] ^ signal[2] ^ signal[5] ^ signal[7] ^ red[0]};
 
+    sumSP = `EXT2(SP[0]) + `EXT2(SP[1]);
+    sumSDi = `EXT2(SDi[0]) + `EXT2(SDi[1]);
+    sumSL = `EXT3(linsin[0][0]) + `EXT3(linsin[0][1]) + `EXT3(linsin[1][0]) + `EXT3(linsin[1][1]);
 
-    SP[0]          = signal[0][0] ^ signal[0][1] ^ signal[1][0] ^ signal[1][1] ^ red[2];
-    SP[1]          = signal[2][0] ^ signal[2][1] ^ signal[3][0] ^ signal[3][1] ^ red[3];
-
-    sumSP          = 1 * SP[0] + 1 * SP[1];
-
-    SDi[0]         = signal[0][0] ^ signal[1][1] ^ signal[2][0] ^ signal[3][1] ^ red[0];
-    SDi[1]         = signal[0][1] ^ signal[1][0] ^ signal[2][1] ^ signal[3][0] ^ red[1];
-
-    sumSDi         = 1 * SDi[0] + 1 * SDi[1];
-
-    sumSL          = 1 * linsin[1][0] + 1 * linsin[1][1] + 1 * linsin[0][0] + 1 * linsin[0][1];
-
-
-    //flag = 3'b000;
-    if((((SP[0:1] !=2'b00) & (SDi[0:1] !=2'b00)) |  sumSL>1) & !((sumSDi==0) & (sumSP==1) & (sumSL>=2)))// condiçao para erros em quadrantes
-    begin
-      quad1 = 1 * SP[0];
-      quad2 = 1 * SP[1];
-      if(quad1 > quad2)// Erro no primeiro quadrante
-        begin
-        //flag = flag | 3'b100;
-        for (b = 0; b < 2; b = b + 1) begin
-          if (linsin[b][0:1] != 2'b00) signal[b][0:1] = signal[b][0:1] ^ linsin[b][0:1];
-        end
-      end
-        
-        else if(quad1 < quad2)// Erro no segundo quadrante
-        begin
-        //flag = flag | 3'b001;
-        for (b = 2; b < 4; b = b + 1) begin
-          if (linsin[b][0:1] != 2'b00) signal[b][0:1] = signal[b][0:1] ^ linsin[b][0:1];
-        end
-      end
-        
-        else if((quad1 == quad2)&({SP[0],SP[1],SDi[0],SDi[1]} !=4'b0000)) // Erro no quadrante central
-        begin
-        //flag = flag | 3'b010;
-        for (b = 1; b < 3; b = b + 1) begin
-          if (linsin[b][0:1] != 2'b00) signal[b][0:1] = signal[b][0:1] ^ {linsin[b][1], linsin[b][0]};
-        end
-
+    // Como a ordem dos vetores mudaram, aqui é o lugar mais provável de ocorrer bugs.
+    // E entender o motivo de existirem índices maiores que o tamanho do linsin.
+    if (((SP != '0 && SDi != '0) || sumSL > 1) && !(sumSDi == 0 && sumSP == 1 && sumSL >= 2)) begin
+      if (SP[0] > SP[1]) begin
+        for (int i = 0; i < 2; i++) if (linsin[i] != '0) signal[i] ^= linsin[i];
+      end else if (SP[0] < SP[1]) begin
+        for (int i = 2; i < 4; i++) if (linsin[i] != '0) signal[i] ^= linsin[i];
+      end else if (SP[0] == SP[1] && {SDi, SP} != '0) begin
+        for (int i = 1; i < 3; i++) if (linsin[i] != '0) signal[i] ^= {linsin[i][0], linsin[i][1]};
       end
     end
   end
-  assign data_out = {signal[0][0], signal[1][0], signal[2][0], signal[3][0], signal[0][1], signal[1][1], signal[2][1], signal[3][1]};
 
+  assign data_out = signal;
 endmodule
