@@ -30,14 +30,29 @@ module tbec_rsc_decoder (
     sumSL = `EXT3(linsin[0][0]) + `EXT3(linsin[0][1]) + `EXT3(linsin[1][0]) + `EXT3(linsin[1][1]);
 
     // Como a ordem dos vetores mudaram, aqui é o lugar mais provável de ocorrer bugs.
-    // E entender o motivo de existirem índices maiores que o tamanho do linsin.
+    // E entender o motivo de existirem índices maiores que o tamanho do linsin. (Foi feito um ajuste como descrito nas issues)
     if (((SP != '0 && SDi != '0) || sumSL > 1) && !(sumSDi == 0 && sumSP == 1 && sumSL >= 2)) begin
       if (SP[0] > SP[1]) begin
-        for (int i = 0; i < 2; i++) if (linsin[i] != '0) signal[i] ^= linsin[i];
+        for (int i = 0; i < 2; i++) begin
+          if (linsin[i] != '0) begin
+            signal[i] ^= linsin[i][0];
+            signal[i+4] ^= linsin[i][1];
+          end
+        end
       end else if (SP[0] < SP[1]) begin
-        for (int i = 2; i < 4; i++) if (linsin[i] != '0) signal[i] ^= linsin[i];
+        for (int i = 2; i < 4; i++) begin
+          if (linsin[i-2] != '0) begin
+            signal[i] ^= linsin[i-2][0];
+            signal[i+4] ^= linsin[i-2][1];
+          end
+        end
       end else if (SP[0] == SP[1] && {SDi, SP} != '0) begin
-        for (int i = 1; i < 3; i++) if (linsin[i] != '0) signal[i] ^= {linsin[i][0], linsin[i][1]};
+        for (int i = 1; i < 3; i++) begin
+          if (linsin[i-1] != '0) begin
+            signal[i] ^= linsin[i-1][1];
+            signal[i+4] ^= linsin[i-1][0];
+          end
+        end
       end
     end
   end

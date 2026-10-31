@@ -9,7 +9,7 @@ format:
   --case_items_alignment=flush-left --inplace {rtl,tb}/*.sv
 
 lint:
-  verilator --lint-only --language 1800-2017 -Wall -Irtl -sv -DMY_DEFINE --top-module top rtl/*.sv
+  verilator --lint-only --language 1800-2017 -Wall -Irtl -sv -DMY_DEFINE -F rtlfiles.f --top-module top
 
 test:
   verilator --binary --language 1800-2017 --timing -Wall --top-module memory_tb rtl/*.sv tb/memory_tb.sv
