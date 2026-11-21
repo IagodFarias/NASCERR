@@ -29,8 +29,6 @@ module tbec_rsc_decoder (
     sumSDi = `EXT2(SDi[0]) + `EXT2(SDi[1]);
     sumSL = `EXT3(linsin[0][0]) + `EXT3(linsin[0][1]) + `EXT3(linsin[1][0]) + `EXT3(linsin[1][1]);
 
-    // Como a ordem dos vetores mudaram, aqui é o lugar mais provável de ocorrer bugs.
-    // E entender o motivo de existirem índices maiores que o tamanho do linsin. (Foi feito um ajuste como descrito nas issues)
     if (((SP != '0 && SDi != '0) || sumSL > 1) && !(sumSDi == 0 && sumSP == 1 && sumSL >= 2)) begin
       if (SP[0] > SP[1]) begin
         for (int i = 0; i < 2; i++) begin
