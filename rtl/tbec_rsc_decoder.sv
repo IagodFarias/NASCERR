@@ -21,7 +21,7 @@ module tbec_rsc_decoder (
     // Cada síndrome usa o mesmo bit de redundância que o encoder gerou para aquele par e coluna.
     linsin = {
       {signal[5] ^ signal[7] ^ red[7], signal[1] ^ signal[3] ^ red[6]},  // linsin[1] = {Cb11, Cb10}
-      {signal[4] ^ signal[6] ^ red[5], signal[0] ^ signal[2] ^ red[4]}   // linsin[0] = {Cb01, Cb00}
+      {signal[4] ^ signal[6] ^ red[5], signal[0] ^ signal[2] ^ red[4]}  // linsin[0] = {Cb01, Cb00}
     };
 
     SP = {signal[2] ^ signal[3] ^ signal[6] ^ signal[7] ^ red[3], signal[0] ^ signal[1] ^ signal[4] ^ signal[5] ^ red[2]};
