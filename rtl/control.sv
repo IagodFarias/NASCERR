@@ -26,6 +26,18 @@ module control
     .data_out(tbec_rsc_decoder_output)
   );
 
+  logic [15:0] mrsc_encoder_output;
+  logic [ 7:0] mrsc_decoder_output;
+
+  mrsc_encoder encoder1 (
+    .data_in(cpu_data_in),
+    .data_out(mrsc_encoder_output)
+  );
+  mrsc_decoder decoder1 (
+    .data_in({ram_up_data_in, ram_down_data_in}),
+    .data_out(mrsc_decoder_output)
+  );
+
   always_comb begin
     cpu_data_out      = '0;
     ram_up_data_out   = '0;
@@ -68,7 +80,15 @@ module control
         end
       end
       MRSC: begin
-        // Todo
+        if (read_en && !write_en) begin
+          cpu_data_out = mrsc_decoder_output;
+          cpu_oe       = 1;
+        end
+        if (!read_en && write_en) begin
+          {ram_up_data_out, ram_down_data_out} = mrsc_encoder_output;
+          ram_up_oe                            = 1;
+          ram_down_oe                          = 1;
+        end
       end
     endcase
   end
