@@ -17,9 +17,11 @@ module tbec_rsc_decoder (
   always_comb begin
     {red, signal} = data_in;
 
-    linsin = {
-      {signal[5] ^ signal[7] ^ red[7], signal[4] ^ signal[6] ^ red[6]}, {signal[1] ^ signal[3] ^ red[5], signal[0] ^ signal[2] ^ red[4]}
-    };
+    // Match each check syndrome to the encoder's redundancy bit.
+    linsin[0][0] = signal[0] ^ signal[2] ^ red[4];
+    linsin[0][1] = signal[4] ^ signal[6] ^ red[5];
+    linsin[1][0] = signal[1] ^ signal[3] ^ red[6];
+    linsin[1][1] = signal[5] ^ signal[7] ^ red[7];
 
     SP = {signal[2] ^ signal[3] ^ signal[6] ^ signal[7] ^ red[3], signal[0] ^ signal[1] ^ signal[4] ^ signal[5] ^ red[2]};
 
@@ -29,9 +31,8 @@ module tbec_rsc_decoder (
     sumSDi = `EXT2(SDi[0]) + `EXT2(SDi[1]);
     sumSL = `EXT3(linsin[0][0]) + `EXT3(linsin[0][1]) + `EXT3(linsin[1][0]) + `EXT3(linsin[1][1]);
 
-    // Como a ordem dos vetores mudaram, aqui é o lugar mais provável de ocorrer bugs.
-    // E entender o motivo de existirem índices maiores que o tamanho do linsin. (Foi feito um ajuste como descrito nas issues)
-    if (((SP != '0 && SDi != '0) || sumSL > 1) && !(sumSDi == 0 && sumSP == 1 && sumSL >= 2)) begin
+    // The article's special case includes either or both SP bits being set.
+    if (((SP != '0 && SDi != '0) || sumSL > 1) && !(sumSDi == 0 && sumSP >= 1 && sumSL >= 2)) begin
       if (SP[0] > SP[1]) begin
         for (int i = 0; i < 2; i++) begin
           if (linsin[i] != '0) begin
@@ -47,11 +48,14 @@ module tbec_rsc_decoder (
           end
         end
       end else if (SP[0] == SP[1] && {SDi, SP} != '0) begin
-        for (int i = 1; i < 3; i++) begin
-          if (linsin[i-1] != '0) begin
-            signal[i] ^= linsin[i-1][1];
-            signal[i+4] ^= linsin[i-1][0];
-          end
+        // Central bits use their own checks, whose partners are outside R3.
+        if (linsin[0] != '0) begin
+          signal[2] ^= linsin[0][0];
+          signal[6] ^= linsin[0][1];
+        end
+        if (linsin[1] != '0) begin
+          signal[1] ^= linsin[1][0];
+          signal[5] ^= linsin[1][1];
         end
       end
     end
