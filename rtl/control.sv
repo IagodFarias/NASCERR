@@ -1,5 +1,10 @@
 module control
   import typedefs::*;
+#(
+  // Selects the TBEC-RSC encoder/decoder implementation:
+  //   0 = 2D2P4X, 1 = 4D4X, any other value = current (default) implementation.
+  parameter int TBEC_RSC_ALGORITHM = 0
+)
 (
   input  sel_t       sel,
   input  logic       read_en,
@@ -17,14 +22,39 @@ module control
   logic [15:0] tbec_rsc_encoder_output;
   logic [ 7:0] tbec_rsc_decoder_output;
 
-  tbec_rsc_encoder encoder0 (
-    .data_in(cpu_data_in),
-    .data_out(tbec_rsc_encoder_output)
-  );
-  tbec_rsc_decoder decoder0 (
-    .data_in({ram_up_data_in, ram_down_data_in}),
-    .data_out(tbec_rsc_decoder_output)
-  );
+  // Pick the TBEC-RSC implementation at elaboration time (see TBEC_RSC_ALGORITHM).
+  generate
+    if (TBEC_RSC_ALGORITHM == 0) begin : g_tbec_2d2p4x
+      tbec_rsc_2d2p4x_encoder encoder0 (
+        .data_in (cpu_data_in),
+        .data_out(tbec_rsc_encoder_output)
+      );
+      tbec_rsc_2d2p4x_decoder decoder0 (
+        .data_in ({ram_up_data_in, ram_down_data_in}),
+        .data_out(tbec_rsc_decoder_output)
+      );
+    end
+    else if (TBEC_RSC_ALGORITHM == 1) begin : g_tbec_4d4x
+      tbec_rsc_4d4x_encoder encoder0 (
+        .data_in (cpu_data_in),
+        .data_out(tbec_rsc_encoder_output)
+      );
+      tbec_rsc_4d4x_decoder decoder0 (
+        .data_in ({ram_up_data_in, ram_down_data_in}),
+        .data_out(tbec_rsc_decoder_output)
+      );
+    end
+    else begin : g_tbec_current
+      tbec_rsc_encoder encoder0 (
+        .data_in (cpu_data_in),
+        .data_out(tbec_rsc_encoder_output)
+      );
+      tbec_rsc_decoder decoder0 (
+        .data_in ({ram_up_data_in, ram_down_data_in}),
+        .data_out(tbec_rsc_decoder_output)
+      );
+    end
+  endgenerate
 
   always_comb begin
     cpu_data_out      = '0;
