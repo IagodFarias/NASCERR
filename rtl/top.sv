@@ -1,5 +1,10 @@
 module top
   import typedefs::*;
+#(
+  // Selects the TBEC-RSC encoder/decoder implementation (passed to control):
+  //   0 = 2D2P4X, 1 = 4D4X, any other value = current (default) implementation.
+  parameter int TBEC_RSC_ALGORITHM = 0
+)
 (
   input sel_t       sel,
   input logic       read_en,
@@ -11,7 +16,7 @@ module top
   logic cpu_oe, ram_up_oe, ram_down_oe;
   logic [7:0] cpu_data_out, ram_up_data_out, ram_down_data_out;
 
-  control control0 (
+  control #(.TBEC_RSC_ALGORITHM(TBEC_RSC_ALGORITHM)) control0 (
     .sel(sel),
     .read_en(read_en),
     .write_en(write_en),
